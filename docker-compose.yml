@@ -1,0 +1,12 @@
+services:
+  musicapp:
+    build: ./backend
+    restart: always
+    ports:
+      - "8888:8000"
+    volumes:
+      - music_data:/music
+      - ./backend/frontend:/app/frontend
+
+volumes:
+  music_data:
