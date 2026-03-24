@@ -10,6 +10,7 @@ const state = {
   currentView: 'library',
   prevView: 'library',
   pendingAddSongId: null,
+  currentPlaylistId: null,
 };
 
 // ── Audio ───────────────────────────────────────────────────────────────────
@@ -39,8 +40,16 @@ function showView(name) {
   });
 }
 
+// PASTE THIS NEW BLOCK:
 document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => showView(btn.dataset.view));
+  btn.addEventListener('click', () => {
+    // If they click the Library tab, refresh the view to show ALL songs
+    // instead of staying stuck on a specific playlist.
+    if (btn.dataset.view === 'library') {
+      loadLibrary(); 
+    }
+    showView(btn.dataset.view);
+  });
 });
 
 $('btn-back-from-player').addEventListener('click', () => {
@@ -51,6 +60,7 @@ $('btn-open-nowplaying').addEventListener('click', () => showView('nowplaying'))
 
 // ── Library ─────────────────────────────────────────────────────────────────
 async function loadLibrary() {
+  state.currentPlaylistId = null;
   try {
     const res = await fetch('/api/library');
     const data = await res.json();
@@ -189,9 +199,10 @@ function renderPlaylists() {
     list.innerHTML = '<div class="empty-state"><p style="padding:20px 0">No playlists yet</p></div>';
     return;
   }
+  
   list.innerHTML = state.playlists.map(p => `
     <div class="playlist-item" data-id="${p.id}">
-      <div>
+      <div class="playlist-info">
         <div class="playlist-name">${escHtml(p.name)}</div>
       </div>
       <button class="playlist-del-btn" data-id="${p.id}" title="Delete playlist">
@@ -199,14 +210,53 @@ function renderPlaylists() {
       </button>
     </div>`).join('');
 
+  // Handle Clicking a Playlist to LOAD IT
+  list.querySelectorAll('.playlist-item').forEach(item => {
+    item.addEventListener('click', async (e) => {
+      // Don't trigger if they clicked the delete button
+      if (e.target.closest('.playlist-del-btn')) return;
+      
+      const id = item.dataset.id;
+      
+      try {
+        const res = await fetch(`/api/playlists/${id}`);
+        if (!res.ok) throw new Error("Server error");
+        
+        const data = await res.json();
+        
+        // Update the state with the songs from the playlist
+        state.songs = data.songs || [];
+        state.currentPlaylistId = id;
+        
+        // Use data.name directly from the server response (safer than searching state)
+        const playlistName = data.name || "Playlist";
+        
+        // Update UI
+        $('song-count').textContent = `Playlist: ${playlistName} (${state.songs.length} songs)`;
+        renderLibrary();
+        closePlaylists();
+        showView('library');
+        
+        toast(`Loaded ${playlistName}`);
+      } catch (err) {
+        console.error("Playlist Load Error:", err); // This shows the real error in F12 console
+        toast("Failed to load playlist");
+      }
+    });
+  });
+
+
+  // Handle Delete
   list.querySelectorAll('.playlist-del-btn').forEach(btn => {
     btn.addEventListener('click', async e => {
       e.stopPropagation();
+      if(!confirm("Delete this playlist?")) return;
       await fetch(`/api/playlists/${btn.dataset.id}`, { method: 'DELETE' });
       await loadPlaylists();
     });
   });
 }
+
 
 $('btn-open-playlists').addEventListener('click', () => {
   loadPlaylists();
