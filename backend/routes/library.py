@@ -69,6 +69,23 @@ async def delete_playlist(playlist_id: int):
     return {"status": "deleted"}
 
 
+@router.get("/playlists/{playlist_id}")
+async def get_playlist(playlist_id: int):
+    conn = get_db()
+    playlist = conn.execute("SELECT * FROM playlists WHERE id=?", (playlist_id,)).fetchone()
+    if not playlist:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Playlist not found")
+    songs = conn.execute("""
+        SELECT s.* FROM songs s
+        JOIN playlist_songs ps ON s.id = ps.song_id
+        WHERE ps.playlist_id = ?
+        ORDER BY ps.position
+    """, (playlist_id,)).fetchall()
+    conn.close()
+    return {"id": playlist["id"], "name": playlist["name"], "songs": [dict(s) for s in songs]}
+
+
 @router.get("/playlists/{playlist_id}/songs")
 async def get_playlist_songs(playlist_id: int):
     conn = get_db()

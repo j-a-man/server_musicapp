@@ -19,12 +19,15 @@ def search_youtube(query: str, limit: int = 12):
         
         # FIX 1: Corrected the URL string formatting so yt-dlp gets a real link
         video_id = entry.get('id', '')
+        thumbnail = entry.get('thumbnail') or (
+            f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg" if video_id else ''
+        )
         entries.append({
             'id': video_id,
             'title': entry.get('title', 'Unknown'),
             'channel': entry.get('channel') or entry.get('uploader', 'Unknown'),
             'duration': entry.get('duration') or 0,
-            'thumbnail': entry.get('thumbnail', ''),
+            'thumbnail': thumbnail,
             'url': f"https://www.youtube.com/watch?v={video_id}",
             'view_count': entry.get('view_count', 0),
         })

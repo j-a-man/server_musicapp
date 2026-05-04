@@ -1,4 +1,4 @@
-const CACHE = 'wavebox-v1';
+const CACHE = 'wavebox-v3';
 const ASSETS = ['/', '/static/style.css', '/static/app.js'];
 
 self.addEventListener('install', e => {

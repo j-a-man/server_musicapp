@@ -2,15 +2,18 @@
 const state = {
   songs: [],
   playlists: [],
-  queue: [],
+  queue: [], // context queue
   queueIndex: -1,
+  userQueue: [], // explicit user queue
+  activeSong: null, // the explicitly currently playing song
   isPlaying: false,
   isShuffled: false,
   isRepeating: false,
-  currentView: 'library',
-  prevView: 'library',
+  currentView: 'home',
+  prevView: 'home',
   pendingAddSongId: null,
   currentPlaylistId: null,
+  currentPlaylistName: null,
 };
 
 // ── Audio ───────────────────────────────────────────────────────────────────
@@ -20,10 +23,18 @@ audio.preload = 'metadata';
 // ── DOM refs ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const views = {
+  home: $('view-home'),
   library: $('view-library'),
   search: $('view-search'),
   nowplaying: $('view-nowplaying'),
 };
+
+// ── Greeting ─────────────────────────────────────────────────────────────────
+function setGreeting() {
+  const h = new Date().getHours();
+  const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  $('home-greeting').textContent = g;
+}
 
 // ── Navigation ──────────────────────────────────────────────────────────────
 function showView(name) {
@@ -38,22 +49,34 @@ function showView(name) {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === name);
   });
+
+  if (name === 'home') {
+    loadRecommendations();
+  }
 }
 
-// PASTE THIS NEW BLOCK:
+// Nav buttons
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    // If they click the Library tab, refresh the view to show ALL songs
-    // instead of staying stuck on a specific playlist.
     if (btn.dataset.view === 'library') {
-      loadLibrary(); 
+      // Re-render current library context without resetting playlist
+      renderLibrary();
     }
     showView(btn.dataset.view);
   });
 });
 
+// Library back button → all songs (exit playlist) or home
+$('btn-library-back').addEventListener('click', async () => {
+  if (state.currentPlaylistId) {
+    await loadLibrary(); // resets playlist context, shows all songs
+  } else {
+    showView('home');
+  }
+});
+
 $('btn-back-from-player').addEventListener('click', () => {
-  showView(state.prevView || 'library');
+  showView(state.prevView || 'home');
 });
 
 $('btn-open-nowplaying').addEventListener('click', () => showView('nowplaying'));
@@ -61,6 +84,7 @@ $('btn-open-nowplaying').addEventListener('click', () => showView('nowplaying'))
 // ── Library ─────────────────────────────────────────────────────────────────
 async function loadLibrary() {
   state.currentPlaylistId = null;
+  state.currentPlaylistName = null;
   try {
     const res = await fetch('/api/library');
     const data = await res.json();
@@ -74,7 +98,24 @@ async function loadLibrary() {
 function renderLibrary() {
   const list = $('library-list');
   const empty = $('library-empty');
-  $('song-count').textContent = state.songs.length ? `${state.songs.length} songs` : '';
+  const ctxLabel = $('library-context-label');
+  const title = $('library-title');
+  const backBtn = $('btn-library-back');
+
+  // Update header based on context
+  if (state.currentPlaylistId && state.currentPlaylistName) {
+    title.textContent = state.currentPlaylistName;
+    ctxLabel.textContent = 'Playlist';
+    $('song-count').textContent = `${state.songs.length} songs`;
+    backBtn.style.opacity = '1';
+    backBtn.style.pointerEvents = 'auto';
+  } else {
+    title.textContent = 'Library';
+    ctxLabel.textContent = 'All Songs';
+    $('song-count').textContent = state.songs.length ? `${state.songs.length} songs` : '';
+    backBtn.style.opacity = '0';
+    backBtn.style.pointerEvents = 'none';
+  }
 
   if (!state.songs.length) {
     list.innerHTML = '';
@@ -133,6 +174,9 @@ function openContextMenu(e, song) {
     <div class="ctx-item" data-action="play">
       <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play
     </div>
+    <div class="ctx-item" data-action="add-queue">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Add to Queue
+    </div>
     <div class="ctx-item" data-action="add-playlist">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add to Playlist
     </div>
@@ -141,7 +185,7 @@ function openContextMenu(e, song) {
     </div>`;
 
   const rect = e.currentTarget.getBoundingClientRect();
-  menu.style.top = `${Math.min(rect.bottom + 4, window.innerHeight - 160)}px`;
+  menu.style.top = `${Math.min(rect.bottom + 4, window.innerHeight - 200)}px`;
   menu.style.right = `${window.innerWidth - rect.right}px`;
   document.body.appendChild(menu);
   activeMenu = menu;
@@ -153,6 +197,8 @@ function openContextMenu(e, song) {
     if (action === 'play') {
       const idx = state.songs.findIndex(s => s.id === song.id);
       if (idx >= 0) playFromLibrary(idx);
+    } else if (action === 'add-queue') {
+      addToQueue(song);
     } else if (action === 'add-playlist') {
       openAddToPlaylist(song.id);
     } else if (action === 'delete') {
@@ -178,7 +224,15 @@ async function deleteSong(songId) {
       updateMiniPlayer();
       updateNowPlayingUI();
     }
-    await loadLibrary();
+    // Reload correct context
+    if (state.currentPlaylistId) {
+      const res = await fetch(`/api/playlists/${state.currentPlaylistId}`);
+      const data = await res.json();
+      state.songs = data.songs || [];
+    } else {
+      await loadLibrary();
+    }
+    renderLibrary();
     toast('Song deleted');
   } catch (e) {
     toast('Failed to delete song');
@@ -199,7 +253,7 @@ function renderPlaylists() {
     list.innerHTML = '<div class="empty-state"><p style="padding:20px 0">No playlists yet</p></div>';
     return;
   }
-  
+
   list.innerHTML = state.playlists.map(p => `
     <div class="playlist-item" data-id="${p.id}">
       <div class="playlist-info">
@@ -210,53 +264,41 @@ function renderPlaylists() {
       </button>
     </div>`).join('');
 
-  // Handle Clicking a Playlist to LOAD IT
   list.querySelectorAll('.playlist-item').forEach(item => {
     item.addEventListener('click', async (e) => {
-      // Don't trigger if they clicked the delete button
       if (e.target.closest('.playlist-del-btn')) return;
-      
       const id = item.dataset.id;
-      
       try {
         const res = await fetch(`/api/playlists/${id}`);
-        if (!res.ok) throw new Error("Server error");
-        
+        if (!res.ok) throw new Error('Server error');
         const data = await res.json();
-        
-        // Update the state with the songs from the playlist
         state.songs = data.songs || [];
         state.currentPlaylistId = id;
-        
-        // Use data.name directly from the server response (safer than searching state)
-        const playlistName = data.name || "Playlist";
-        
-        // Update UI
-        $('song-count').textContent = `Playlist: ${playlistName} (${state.songs.length} songs)`;
+        state.currentPlaylistName = data.name || 'Playlist';
         renderLibrary();
         closePlaylists();
         showView('library');
-        
-        toast(`Loaded ${playlistName}`);
+        toast(`Loaded ${state.currentPlaylistName}`);
       } catch (err) {
-        console.error("Playlist Load Error:", err); // This shows the real error in F12 console
-        toast("Failed to load playlist");
+        console.error('Playlist Load Error:', err);
+        toast('Failed to load playlist');
       }
     });
   });
 
-
-  // Handle Delete
   list.querySelectorAll('.playlist-del-btn').forEach(btn => {
     btn.addEventListener('click', async e => {
       e.stopPropagation();
-      if(!confirm("Delete this playlist?")) return;
+      if (!confirm('Delete this playlist?')) return;
       await fetch(`/api/playlists/${btn.dataset.id}`, { method: 'DELETE' });
+      // If we were viewing the deleted playlist, go back to all songs
+      if (state.currentPlaylistId === btn.dataset.id) {
+        await loadLibrary();
+      }
       await loadPlaylists();
     });
   });
 }
-
 
 $('btn-open-playlists').addEventListener('click', () => {
   loadPlaylists();
@@ -264,10 +306,100 @@ $('btn-open-playlists').addEventListener('click', () => {
   $('panel-overlay').classList.remove('hidden');
 });
 $('btn-close-playlists').addEventListener('click', closePlaylists);
-$('panel-overlay').addEventListener('click', closePlaylists);
+$('panel-overlay').addEventListener('click', () => { closePlaylists(); closeQueue(); });
+
 function closePlaylists() {
   $('panel-playlists').classList.add('hidden');
-  $('panel-overlay').classList.add('hidden');
+  if ($('panel-queue') && $('panel-queue').classList.contains('hidden')) {
+    $('panel-overlay').classList.add('hidden');
+  }
+}
+
+// ── Queue Panel ──────────────────────────────────────────────────────────────
+$('btn-open-queue').addEventListener('click', () => {
+  renderQueue();
+  $('panel-queue').classList.remove('hidden');
+  $('panel-overlay').classList.remove('hidden');
+});
+$('btn-close-queue').addEventListener('click', closeQueue);
+
+function closeQueue() {
+  $('panel-queue').classList.add('hidden');
+  if ($('panel-playlists').classList.contains('hidden')) {
+    $('panel-overlay').classList.add('hidden');
+  }
+}
+
+function renderQueue() {
+  const container = $('queue-list');
+  if (!container) return;
+
+  let html = '';
+
+  // 1. Now Playing
+  if (state.activeSong) {
+    html += `<div class="queue-section-title">Now Playing</div>`;
+    html += queueItemHTML(state.activeSong, -1, true);
+  }
+
+  // 2. Explicit User Queue
+  if (state.userQueue.length > 0) {
+    html += `<div class="queue-section-title">Next In Queue</div>`;
+    html += state.userQueue.map((s, i) => queueItemHTML(s, i, false, true)).join('');
+  }
+
+  // 3. Upcoming Context Queue
+  if (state.queue.length > 0) {
+    html += `<div class="queue-section-title">Next Up</div>`;
+    let upcoming = [];
+    if (state.isShuffled) {
+      upcoming = state.queue.filter(s => s.id !== state.activeSong?.id).slice(0, 50);
+    } else {
+      let nextIdx = (state.queueIndex + 1) % state.queue.length;
+      if (state.queueIndex !== -1) {
+        upcoming = state.queue.slice(nextIdx).concat(state.queue.slice(0, state.queueIndex));
+        upcoming = upcoming.slice(0, 50);
+      }
+    }
+    if (upcoming.length) {
+       html += upcoming.map((s, i) => queueItemHTML(s, i, false, false)).join('');
+    } else {
+       html += '<div style="padding:10px 16px;color:var(--text-muted);font-size:13px">End of queue</div>';
+    }
+  }
+
+  if (!html) {
+    html = '<div class="empty-state"><p style="padding:20px 0">Queue is empty</p></div>';
+  }
+  container.innerHTML = html;
+
+  container.querySelectorAll('.queue-del-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx);
+      state.userQueue.splice(idx, 1);
+      renderQueue();
+    });
+  });
+}
+
+function queueItemHTML(song, idx, isPlaying = false, isUserQueue = false) {
+  const thumb = song.thumbnail
+    ? `<img src="${escHtml(song.thumbnail)}" alt="" onerror="this.style.display='none'" />`
+    : '♪';
+  const removeBtn = isUserQueue 
+    ? `<div class="queue-del-btn" data-idx="${idx}" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>` 
+    : '';
+  return `
+    <div class="queue-item ${isPlaying ? 'playing' : ''}">
+      <div class="queue-thumb">${thumb}</div>
+      <div class="queue-info">
+        <div class="queue-title">${escHtml(song.title)}</div>
+        <div class="queue-artist">${escHtml(song.artist || '—')}</div>
+      </div>
+      ${removeBtn}
+    </div>
+  `;
 }
 
 $('btn-new-playlist').addEventListener('click', async () => {
@@ -277,7 +409,7 @@ $('btn-new-playlist').addEventListener('click', async () => {
   await loadPlaylists();
 });
 
-// ── Add to Playlist Modal ─────────────────────────────────────────────────────
+// ── Add to Playlist Modal ──────────────────────────────────────────────────
 async function openAddToPlaylist(songId) {
   state.pendingAddSongId = songId;
   await loadPlaylists();
@@ -300,8 +432,123 @@ async function openAddToPlaylist(songId) {
 }
 $('btn-modal-cancel').addEventListener('click', () => $('modal-add-playlist').classList.add('hidden'));
 
+// ── Recommendations ──────────────────────────────────────────────────────────
+let recsLoaded = false;
+
+async function loadRecommendations() {
+  if (recsLoaded) return;
+  $('home-loading').classList.remove('hidden');
+  $('section-for-you').style.opacity = '0';
+  $('section-trending').style.opacity = '0';
+
+  // Render Your Music row immediately from library (already pre-loaded at init)
+  renderYourMusicRow();
+
+  try {
+    const res = await fetch('/api/recommendations');
+    const data = await res.json();
+
+    $('for-you-label').textContent = data.forYouLabel || 'Based on your taste';
+    renderRecRow('rec-for-you', data.forYou || []);
+    renderRecRow('rec-trending', data.trending || []);
+
+    $('section-for-you').style.transition = 'opacity 0.4s ease';
+    $('section-trending').style.transition = 'opacity 0.4s ease 0.1s';
+    $('section-for-you').style.opacity = '1';
+    $('section-trending').style.opacity = '1';
+
+    recsLoaded = true;
+  } catch (e) {
+    console.error('Failed to load recommendations', e);
+  } finally {
+    $('home-loading').classList.add('hidden');
+  }
+}
+
+function renderYourMusicRow() {
+  const container = $('rec-your-music');
+  const section = $('section-your-music');
+  if (!container) return;
+  const songs = state.songs.filter(s => s.filename !== 'pending').slice(0, 12);
+  if (!songs.length) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+  container.innerHTML = songs.map(s => {
+    const thumb = s.thumbnail
+      ? `<img src="${escHtml(s.thumbnail)}" alt="" onerror="this.style.display='none'" />`
+      : `<span class="rec-art-fallback">\u266a</span>`;
+    return `
+      <div class="rec-card your-music-card" data-song-id="${s.id}">
+        <div class="rec-card-art">${thumb}</div>
+        <div class="rec-card-info">
+          <div class="rec-card-title">${escHtml(s.title)}</div>
+          <div class="rec-card-channel">${escHtml(s.artist || '\u2014')}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  container.querySelectorAll('.your-music-card').forEach((card, i) => {
+    card.addEventListener('click', () => {
+      // Play from library context at this song
+      state.queue = [...state.songs];
+      state.queueIndex = i;
+      playCurrent();
+      showView('nowplaying');
+    });
+  });
+}
+
+function renderRecRow(containerId, results) {
+  const container = $(containerId);
+  if (!results.length) {
+    container.innerHTML = '<p class="rec-empty">Nothing found</p>';
+    return;
+  }
+  container.innerHTML = results.map(r => {
+    const dur = formatDuration(r.duration);
+    // Use thumbnail or fall back to YouTube standard thumbnail URL from video ID
+    const videoId = (r.url || '').match(/[?&]v=([^&]+)/)?.[1] || '';
+    const thumbSrc = r.thumbnail || (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '');
+    const thumb = thumbSrc
+      ? `<img src="${escHtml(thumbSrc)}" alt="" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/${videoId}/mqdefault.jpg'" />`
+      : `<span class="rec-art-fallback">\u266a</span>`;
+    const alreadyDone = downloadedUrls.has(r.url);
+    return `
+      <div class="rec-card">
+        <div class="rec-card-art">
+          ${thumb || '<span class="rec-art-fallback">♪</span>'}
+          <button class="rec-dl-btn ${alreadyDone ? 'done' : ''}"
+            data-url="${escHtml(r.url)}"
+            data-title="${escHtml(r.title)}"
+            data-artist="${escHtml(r.channel || '')}"
+            data-thumb="${escHtml(r.thumbnail || '')}"
+            data-duration="${r.duration || 0}"
+            title="Download">
+            ${alreadyDone
+              ? `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`
+              : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`
+            }
+          </button>
+        </div>
+        <div class="rec-card-info">
+          <div class="rec-card-title">${escHtml(r.title)}</div>
+          <div class="rec-card-channel">${escHtml(r.channel || '')} · ${dur}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  container.querySelectorAll('.rec-dl-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (btn.classList.contains('downloading') || btn.classList.contains('done')) return;
+      await startDownload(btn);
+    });
+  });
+}
+
 // ── Search ───────────────────────────────────────────────────────────────────
-let searchDebounce = null;
 $('search-btn').addEventListener('click', doSearch);
 $('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 
@@ -319,7 +566,6 @@ async function doSearch() {
   }
 }
 
-// Track which songs are being downloaded / done this session
 const downloadedUrls = new Set();
 
 function renderSearchResults(results) {
@@ -391,7 +637,7 @@ function pollDownloadStatus(songId, btn, url) {
         btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`;
         downloadedUrls.add(url);
         toast('Download complete!');
-        await loadLibrary();
+        // Don't auto-reset library — just keep current context
       } else if (data.status.startsWith('error')) {
         clearInterval(interval);
         btn.classList.remove('downloading');
@@ -405,12 +651,13 @@ function pollDownloadStatus(songId, btn, url) {
 
 // ── Playback ─────────────────────────────────────────────────────────────────
 function currentSong() {
-  return state.queue[state.queueIndex] || null;
+  return state.activeSong || null;
 }
 
 function playFromLibrary(index) {
   state.queue = [...state.songs];
   state.queueIndex = index;
+  state.activeSong = state.queue[index];
   playCurrent();
 }
 
@@ -425,6 +672,7 @@ function playCurrent() {
   updateMiniPlayer();
   highlightCurrentSong();
   setupMediaSession();
+  renderQueue();
 }
 
 function togglePlay() {
@@ -440,20 +688,41 @@ function togglePlay() {
 }
 
 function nextSong() {
+  // 1. Prioritize userQueue
+  if (state.userQueue.length > 0) {
+    state.activeSong = state.userQueue.shift();
+    playCurrent();
+    return;
+  }
+  // 2. Fall back to context queue
   if (!state.queue.length) return;
   if (state.isShuffled) {
     state.queueIndex = Math.floor(Math.random() * state.queue.length);
   } else {
     state.queueIndex = (state.queueIndex + 1) % state.queue.length;
   }
+  state.activeSong = state.queue[state.queueIndex];
   playCurrent();
 }
 
 function prevSong() {
-  if (!state.queue.length) return;
   if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+  // If we are playing from userQueue, going back just restarts the song for simplicity.
+  // To be fully accurate, we'd need a history stack.
+  if (state.activeSong && !state.queue.some(s => s.id === state.activeSong.id && state.queue.indexOf(s) === state.queueIndex)) {
+    audio.currentTime = 0; 
+    return; 
+  }
+  if (!state.queue.length) return;
   state.queueIndex = (state.queueIndex - 1 + state.queue.length) % state.queue.length;
+  state.activeSong = state.queue[state.queueIndex];
   playCurrent();
+}
+
+function addToQueue(song) {
+  state.userQueue.push(song);
+  renderQueue();
+  toast('Added to queue');
 }
 
 audio.addEventListener('ended', () => {
@@ -541,7 +810,7 @@ function updateMiniPlayer() {
   updatePlayButtons();
 }
 
-// ── MediaSession (lock screen controls) ──────────────────────────────────────
+// ── MediaSession ──────────────────────────────────────────────────────────────
 function setupMediaSession() {
   if (!('mediaSession' in navigator)) return;
   const song = currentSong();
@@ -584,4 +853,6 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-loadLibrary();
+setGreeting();
+loadRecommendations();
+loadLibrary(); // Pre-load library in background so it's ready when user switches tabs

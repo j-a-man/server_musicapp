@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Wavebox" />
@@ -11,34 +13,87 @@
   <link rel="manifest" href="/static/manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Karla:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Karla:wght@300;400;500;600&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css?v=4" />
 </head>
-<body>
 
-  <!-- Views -->
+<body>
   <div id="app">
 
-    <!-- Library View -->
-    <div id="view-library" class="view active">
+    <!-- ── HOME / DISCOVERY VIEW ─────────────────────────── -->
+    <div id="view-home" class="view active">
+      <div class="home-hero">
+        <div class="home-greeting" id="home-greeting">Good evening</div>
+        <h1 class="home-title">Discover sir</h1>
+      </div>
+
+      <div id="home-loading" class="home-loading hidden">
+        <div class="spinner"></div>
+        <span>Finding music for you…</span>
+      </div>
+
+      <!-- Your Music -->
+      <div class="rec-section hidden" id="section-your-music">
+        <div class="rec-section-header">
+          <div class="rec-section-title">Your Music</div>
+          <div class="rec-section-sub">Tap to play</div>
+        </div>
+        <div class="rec-scroll" id="rec-your-music"></div>
+      </div>
+
+      <!-- For You -->
+      <div class="rec-section" id="section-for-you">
+        <div class="rec-section-header">
+          <div class="rec-section-title">For You Sir</div>
+          <div class="rec-section-sub" id="for-you-label">Based on your taste</div>
+        </div>
+        <div class="rec-scroll" id="rec-for-you"></div>
+      </div>
+
+      <!-- Trending -->
+      <div class="rec-section" id="section-trending">
+        <div class="rec-section-header">
+          <div class="rec-section-title">Trending</div>
+          <div class="rec-section-sub">Right now</div>
+        </div>
+        <div class="rec-scroll" id="rec-trending"></div>
+      </div>
+    </div>
+
+    <!-- ── LIBRARY VIEW ──────────────────────────────────── -->
+    <div id="view-library" class="view">
       <div class="view-header">
-        <h1 class="logo">Wavebox</h1>
+        <button class="icon-btn" id="btn-library-back" title="Back to Home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <h2 class="view-title" id="library-title">Library</h2>
         <button class="icon-btn" id="btn-open-playlists" title="Playlists">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="21" y2="6" />
+            <line x1="8" y1="12" x2="21" y2="12" />
+            <line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" />
+            <line x1="3" y1="12" x2="3.01" y2="12" />
+            <line x1="3" y1="18" x2="3.01" y2="18" />
+          </svg>
         </button>
       </div>
       <div class="section-title-row">
-        <span class="section-label">All Songs</span>
+        <span class="section-label" id="library-context-label">All Songs</span>
         <span id="song-count" class="song-count"></span>
       </div>
       <div id="library-list" class="song-list"></div>
       <div id="library-empty" class="empty-state hidden">
         <div class="empty-icon">🎵</div>
-        <p>No songs yet.<br/>Search and download some music!</p>
+        <p>No songs yet.<br />Search and download some music!</p>
       </div>
     </div>
 
-    <!-- Search View -->
+    <!-- ── SEARCH VIEW ───────────────────────────────────── -->
     <div id="view-search" class="view">
       <div class="view-header">
         <h2 class="view-title">Search</h2>
@@ -46,7 +101,10 @@
       <div class="search-bar-wrap">
         <input id="search-input" type="search" placeholder="Artist, song, or album…" autocomplete="off" />
         <button id="search-btn" class="search-submit">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
         </button>
       </div>
       <div id="search-results" class="search-results"></div>
@@ -56,11 +114,25 @@
       </div>
     </div>
 
-    <!-- Now Playing View -->
+    <!-- ── NOW PLAYING VIEW ──────────────────────────────── -->
     <div id="view-nowplaying" class="view">
-      <button class="back-btn" id="btn-back-from-player">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
+      <div class="np-header">
+        <button class="back-btn" id="btn-back-from-player">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <button class="queue-btn icon-btn" id="btn-open-queue" title="Queue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="8" y1="6" x2="21" y2="6" />
+            <line x1="8" y1="12" x2="21" y2="12" />
+            <line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" />
+            <line x1="3" y1="12" x2="3.01" y2="12" />
+            <line x1="3" y1="18" x2="3.01" y2="18" />
+          </svg>
+        </button>
+      </div>
       <div class="np-artwork-wrap">
         <div class="np-artwork" id="np-artwork">
           <div class="np-artwork-placeholder">♪</div>
@@ -81,38 +153,78 @@
       </div>
       <div class="np-controls">
         <button class="ctrl-btn" id="btn-shuffle" title="Shuffle">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 3 21 3 21 8" />
+            <line x1="4" y1="20" x2="21" y2="3" />
+            <polyline points="21 16 21 21 16 21" />
+            <line x1="15" y1="15" x2="21" y2="21" />
+          </svg>
         </button>
         <button class="ctrl-btn" id="btn-prev" title="Previous">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="19 20 9 12 19 4 19 20" />
+            <line x1="5" y1="19" x2="5" y2="5" />
+          </svg>
         </button>
         <button class="ctrl-btn play-btn" id="btn-play-np" title="Play/Pause">
-          <svg id="icon-play-np" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          <svg id="icon-pause-np" viewBox="0 0 24 24" fill="currentColor" class="hidden"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          <svg id="icon-play-np" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+          <svg id="icon-pause-np" viewBox="0 0 24 24" fill="currentColor" class="hidden">
+            <rect x="6" y="4" width="4" height="16" />
+            <rect x="14" y="4" width="4" height="16" />
+          </svg>
         </button>
         <button class="ctrl-btn" id="btn-next" title="Next">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="5 4 15 12 5 20 5 4" />
+            <line x1="19" y1="5" x2="19" y2="19" />
+          </svg>
         </button>
         <button class="ctrl-btn" id="btn-repeat" title="Repeat">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="17 1 21 5 17 9" />
+            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <polyline points="7 23 3 19 7 15" />
+            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+          </svg>
         </button>
       </div>
     </div>
 
-    <!-- Playlists Panel -->
     <div id="panel-playlists" class="side-panel hidden">
       <div class="panel-header">
         <h2>Playlists</h2>
         <button class="icon-btn" id="btn-close-playlists">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
         </button>
       </div>
       <button class="btn-create-playlist" id="btn-new-playlist">+ New Playlist</button>
       <div id="playlists-list"></div>
     </div>
+
+    <!-- ── QUEUE PANEL ───────────────────────────────────── -->
+    <div id="panel-queue" class="side-panel hidden">
+      <div class="panel-header">
+        <h2>Queue</h2>
+        <button class="icon-btn" id="btn-close-queue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div id="queue-list" class="queue-scroll-area">
+        <!-- Queue content rendered dynamically -->
+      </div>
+    </div>
+
     <div id="panel-overlay" class="panel-overlay hidden"></div>
 
-    <!-- Add to Playlist Modal -->
+    <!-- ── ADD TO PLAYLIST MODAL ─────────────────────────── -->
     <div id="modal-add-playlist" class="modal hidden">
       <div class="modal-box">
         <h3>Add to Playlist</h3>
@@ -123,7 +235,7 @@
 
   </div>
 
-  <!-- Mini Player -->
+  <!-- ── MINI PLAYER ───────────────────────────────────── -->
   <div id="mini-player" class="mini-player hidden">
     <div class="mini-artwork" id="mini-artwork">♪</div>
     <div class="mini-meta" id="btn-open-nowplaying">
@@ -131,26 +243,49 @@
       <div class="mini-artist" id="mini-artist">—</div>
     </div>
     <button class="mini-play-btn" id="btn-play-mini">
-      <svg id="icon-play-mini" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      <svg id="icon-pause-mini" viewBox="0 0 24 24" fill="currentColor" class="hidden"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      <svg id="icon-play-mini" viewBox="0 0 24 24" fill="currentColor">
+        <polygon points="5 3 19 12 5 21 5 3" />
+      </svg>
+      <svg id="icon-pause-mini" viewBox="0 0 24 24" fill="currentColor" class="hidden">
+        <rect x="6" y="4" width="4" height="16" />
+        <rect x="14" y="4" width="4" height="16" />
+      </svg>
     </button>
     <button class="mini-next-btn" id="btn-mini-next">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polygon points="5 4 15 12 5 20 5 4" />
+        <line x1="19" y1="5" x2="19" y2="19" />
+      </svg>
     </button>
   </div>
 
-  <!-- Bottom Nav -->
+  <!-- ── BOTTOM NAV ─────────────────────────────────────── -->
   <nav class="bottom-nav">
-    <button class="nav-btn active" data-view="library">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <button class="nav-btn active" data-view="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-btn" data-view="library">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 18V5l12-2v13" />
+        <circle cx="6" cy="18" r="3" />
+        <circle cx="18" cy="16" r="3" />
+      </svg>
       <span>Library</span>
     </button>
     <button class="nav-btn" data-view="search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
       <span>Search</span>
     </button>
   </nav>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=4"></script>
 </body>
+
 </html>
