@@ -21,6 +21,22 @@ class DownloadRequest(BaseModel):
 @router.post("/download")
 async def start_download(req: DownloadRequest, background_tasks: BackgroundTasks):
     conn = get_db()
+    
+    # Check if already exists
+    existing = conn.execute(
+        "SELECT id, filename FROM songs WHERE youtube_url = ?", 
+        (req.url,)
+    ).fetchone()
+    
+    if existing:
+        if existing["filename"] != "pending":
+            conn.close()
+            return {"song_id": existing["id"], "status": "done", "already_exists": True}
+        else:
+            # Still downloading
+            conn.close()
+            return {"song_id": existing["id"], "status": "downloading", "already_exists": True}
+
     cursor = conn.execute(
         "INSERT INTO songs (title, artist, youtube_url, filename, thumbnail, duration) VALUES (?, ?, ?, ?, ?, ?)",
         (req.title, req.artist, req.url, "pending", req.thumbnail, req.duration)

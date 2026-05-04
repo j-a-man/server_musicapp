@@ -53,6 +53,9 @@ function showView(name) {
   if (name === 'home') {
     loadRecommendations();
   }
+  if (name === 'search') {
+    showBrowseView();
+  }
 }
 
 // Nav buttons
@@ -89,6 +92,13 @@ async function loadLibrary() {
     const res = await fetch('/api/library');
     const data = await res.json();
     state.songs = data.songs || [];
+    
+    // Sync downloadedUrls set
+    downloadedUrls.clear();
+    state.songs.forEach(s => {
+      if (s.youtube_url) downloadedUrls.add(s.youtube_url);
+    });
+    
     renderLibrary();
   } catch (e) {
     console.error('Failed to load library', e);
@@ -143,8 +153,9 @@ function songItemHTML(song, i) {
   const thumb = song.thumbnail
     ? `<img src="${escHtml(song.thumbnail)}" alt="" onerror="this.style.display='none'" />`
     : '♪';
+  const delay = Math.min(i * 30, 400);
   return `
-    <div class="song-item" data-id="${song.id}">
+    <div class="song-item fade-in-item" data-id="${song.id}" style="animation-delay:${delay}ms">
       <div class="song-thumb">${thumb}</div>
       <div class="song-info">
         <div class="song-title">${escHtml(song.title)}</div>
@@ -316,12 +327,13 @@ function closePlaylists() {
 }
 
 // ── Queue Panel ──────────────────────────────────────────────────────────────
-$('btn-open-queue').addEventListener('click', () => {
+$('btn-open-queue').addEventListener('click', (e) => {
+  e.stopPropagation();
   renderQueue();
   $('panel-queue').classList.remove('hidden');
   $('panel-overlay').classList.remove('hidden');
 });
-$('btn-close-queue').addEventListener('click', closeQueue);
+$('btn-close-queue').addEventListener('click', (e) => { e.stopPropagation(); closeQueue(); });
 
 function closeQueue() {
   $('panel-queue').classList.add('hidden');
@@ -339,19 +351,21 @@ function renderQueue() {
   // 1. Now Playing
   if (state.activeSong) {
     html += `<div class="queue-section-title">Now Playing</div>`;
-    html += queueItemHTML(state.activeSong, -1, true);
+    html += `<div id="np-item-container">${queueItemHTML(state.activeSong, -1, true)}</div>`;
   }
 
   // 2. Explicit User Queue
   if (state.userQueue.length > 0) {
     html += `<div class="queue-section-title">Next In Queue</div>`;
+    html += `<div id="user-queue-items">`;
     html += state.userQueue.map((s, i) => queueItemHTML(s, i, false, true)).join('');
+    html += `</div>`;
   }
 
   // 3. Upcoming Context Queue
+  let upcoming = [];
   if (state.queue.length > 0) {
     html += `<div class="queue-section-title">Next Up</div>`;
-    let upcoming = [];
     if (state.isShuffled) {
       upcoming = state.queue.filter(s => s.id !== state.activeSong?.id).slice(0, 50);
     } else {
@@ -362,7 +376,9 @@ function renderQueue() {
       }
     }
     if (upcoming.length) {
+       html += `<div id="context-queue-items">`;
        html += upcoming.map((s, i) => queueItemHTML(s, i, false, false)).join('');
+       html += `</div>`;
     } else {
        html += '<div style="padding:10px 16px;color:var(--text-muted);font-size:13px">End of queue</div>';
     }
@@ -372,6 +388,47 @@ function renderQueue() {
     html = '<div class="empty-state"><p style="padding:20px 0">Queue is empty</p></div>';
   }
   container.innerHTML = html;
+
+  // Initialize Sortable for User Queue
+  const userList = $('user-queue-items');
+  if (userList && typeof Sortable !== 'undefined') {
+    new Sortable(userList, {
+      animation: 150,
+      handle: '.queue-drag-handle',
+      onEnd: (evt) => {
+        const item = state.userQueue.splice(evt.oldIndex, 1)[0];
+        state.userQueue.splice(evt.newIndex, 0, item);
+        renderQueue(); 
+      }
+    });
+  }
+
+  // Initialize Sortable for Context Queue
+  const contextList = $('context-queue-items');
+  if (contextList && typeof Sortable !== 'undefined') {
+    new Sortable(contextList, {
+      animation: 150,
+      handle: '.queue-drag-handle',
+      onEnd: (evt) => {
+        const item = upcoming.splice(evt.oldIndex, 1)[0];
+        upcoming.splice(evt.newIndex, 0, item);
+        
+        if (!state.isShuffled) {
+          let nextIdx = (state.queueIndex + 1) % state.queue.length;
+          let newFullQueue = [...state.queue];
+          for(let i=0; i<upcoming.length; i++) {
+             let targetIdx = (nextIdx + i) % state.queue.length;
+             newFullQueue[targetIdx] = upcoming[i];
+          }
+          state.queue = newFullQueue;
+        } else {
+           state.queue = [state.activeSong, ...upcoming];
+           state.queueIndex = 0;
+        }
+        renderQueue();
+      }
+    });
+  }
 
   container.querySelectorAll('.queue-del-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -390,8 +447,11 @@ function queueItemHTML(song, idx, isPlaying = false, isUserQueue = false) {
   const removeBtn = isUserQueue 
     ? `<div class="queue-del-btn" data-idx="${idx}" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>` 
     : '';
+  const dragHandle = `<div class="queue-drag-handle"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg></div>`;
+  
   return `
     <div class="queue-item ${isPlaying ? 'playing' : ''}">
+      ${!isPlaying ? dragHandle : '<div style="width:24px"></div>'}
       <div class="queue-thumb">${thumb}</div>
       <div class="queue-info">
         <div class="queue-title">${escHtml(song.title)}</div>
@@ -441,8 +501,9 @@ async function loadRecommendations() {
   $('section-for-you').style.opacity = '0';
   $('section-trending').style.opacity = '0';
 
-  // Render Your Music row immediately from library (already pre-loaded at init)
+  // Render Artist Radio and Your Music row immediately from library
   renderYourMusicRow();
+  renderArtistRadioCards();
 
   try {
     const res = await fetch('/api/recommendations');
@@ -451,6 +512,13 @@ async function loadRecommendations() {
     $('for-you-label').textContent = data.forYouLabel || 'Based on your taste';
     renderRecRow('rec-for-you', data.forYou || []);
     renderRecRow('rec-trending', data.trending || []);
+
+    if (data.discoveryRows?.length) {
+      renderDiscoveryRows(data.discoveryRows);
+    }
+    if (data.suggestedPlaylists?.length) {
+      renderSuggestedPlaylists(data.suggestedPlaylists);
+    }
 
     $('section-for-you').style.transition = 'opacity 0.4s ease';
     $('section-trending').style.transition = 'opacity 0.4s ease 0.1s';
@@ -464,6 +532,220 @@ async function loadRecommendations() {
     $('home-loading').classList.add('hidden');
   }
 }
+
+function renderSuggestedPlaylists(playlists) {
+  const container = $('rec-playlists');
+  const section = $('section-playlists');
+  if (!container) return;
+  section.classList.remove('hidden');
+  container.innerHTML = playlists.map(p => {
+    const thumb = p.thumbnail
+      ? `<img src="${escHtml(p.thumbnail)}" alt="" onerror="this.style.display='none'" />`
+      : `<span class="rec-art-fallback">💿</span>`;
+    return `
+      <div class="rec-card playlist-rec-card" data-query="${escHtml(p.title)}">
+        <div class="rec-card-art">
+          ${thumb}
+          <div class="rec-card-play">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+        </div>
+        <div class="rec-card-info">
+          <div class="rec-card-title">${escHtml(p.title)}</div>
+          <div class="rec-card-channel">Playlist</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  container.querySelectorAll('.playlist-rec-card').forEach(card => {
+    card.addEventListener('click', () => {
+      $('search-input').value = card.dataset.query;
+      doSearch();
+      showView('search');
+    });
+  });
+}
+
+function renderArtistRadioCards() {
+  const container = $('rec-artist-radio');
+  const section = $('section-artist-radio');
+  if (!container) return;
+
+  const artists = [...new Set(
+    state.songs.filter(s => s.filename !== 'pending' && s.artist).map(s => s.artist)
+  )].slice(0, 10);
+
+  if (!artists.length) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+
+  container.innerHTML = artists.map(artist => {
+    // Find a thumbnail from any song by this artist
+    const thumb = state.songs.find(s => s.artist === artist && s.thumbnail)?.thumbnail;
+    const imgEl = thumb
+      ? `<img src="${escHtml(thumb)}" alt="" onerror="this.style.display='none'" />`
+      : `<span class="rec-art-fallback">♪</span>`;
+    return `
+      <div class="radio-card" data-artist="${escHtml(artist)}">
+        <div class="radio-card-art">
+          ${imgEl}
+          <div class="radio-card-overlay">
+            <div class="radio-play-icon">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="radio-card-label">${escHtml(artist)}</div>
+        <div class="radio-card-sub">Radio</div>
+      </div>`;
+  }).join('');
+
+  container.querySelectorAll('.radio-card').forEach(card => {
+    card.addEventListener('click', () => startArtistRadio(card.dataset.artist));
+  });
+}
+
+function renderDiscoveryRows(discoveryRows) {
+  const container = $('section-discovery-rows');
+  if (!container) return;
+
+  container.innerHTML = discoveryRows.map((row, ri) => `
+    <div class="rec-section" style="opacity:0;transition:opacity 0.4s ease ${0.1 + ri * 0.08}s" id="discovery-row-${ri}">
+      <div class="rec-section-header">
+        <div class="rec-section-title">${escHtml(row.label)}</div>
+        <div class="rec-section-sub discovery-row-radio" data-artist="${escHtml(row.artist)}" style="cursor:pointer">
+          Start Radio →
+        </div>
+      </div>
+      <div class="rec-scroll" id="rec-discovery-${ri}"></div>
+    </div>`).join('');
+
+  // Render each row's songs
+  discoveryRows.forEach((row, ri) => {
+    renderRecRow(`rec-discovery-${ri}`, row.songs);
+    // Fade in
+    requestAnimationFrame(() => {
+      const el = $(`discovery-row-${ri}`);
+      if (el) el.style.opacity = '1';
+    });
+  });
+
+  // Wire up 'Start Radio' links
+  container.querySelectorAll('.discovery-row-radio').forEach(btn => {
+    btn.addEventListener('click', () => startArtistRadio(btn.dataset.artist));
+  });
+}
+
+async function startArtistRadio(artist) {
+  toast(`Starting ${artist} Radio…`);
+  try {
+    const res = await fetch(`/api/radio/${encodeURIComponent(artist)}`);
+    const data = await res.json();
+    const songs = data.songs || [];
+    if (!songs.length) { toast('No songs found for this radio'); return; }
+
+    // Add all radio results as a downloadable queue suggestion shown in search results
+    // For Option B: load them into a temporary "radio session" that queues downloads
+    state.radioQueue = songs;
+    state.radioArtist = artist;
+    showRadioModal(artist, songs);
+  } catch (e) {
+    console.error('Radio failed', e);
+    toast('Failed to load radio');
+  }
+}
+
+function showRadioModal(artist, songs) {
+  const container = $('search-results');
+  $('search-empty').classList.add('hidden');
+  $('search-input').value = `${artist} Radio`;
+  showView('search');
+
+  // Build banner + proper result-item rows (same layout as regular search)
+  let html = `
+    <div class="radio-header-banner">
+      <div class="radio-banner-left">
+        <div class="radio-banner-icon">📻</div>
+        <div>
+          <div class="radio-banner-title">${escHtml(artist)} Radio</div>
+          <div class="radio-banner-sub">${songs.length} songs</div>
+        </div>
+      </div>
+      <div class="radio-banner-actions">
+        <button class="btn-download-all" id="btn-dl-all-radio">Download All</button>
+        <button class="btn-play-all-radio" id="btn-play-all-radio">Play All</button>
+      </div>
+    </div>`;
+
+  html += songs.map((r, i) => {
+    const dur = formatDuration(r.duration);
+    const videoId = (r.url || '').match(/[?&]v=([^&]+)/)?.[1] || '';
+    const thumbSrc = r.thumbnail || (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '');
+    const thumb = thumbSrc
+      ? `<img src="${escHtml(thumbSrc)}" alt="" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/${videoId}/mqdefault.jpg'" />`
+      : '♫';
+    const alreadyDone = r.is_downloaded || downloadedUrls.has(r.url);
+    return `
+      <div class="result-item fade-in-item" style="animation-delay:${i * 35}ms"
+           data-url="${escHtml(r.url || '')}">
+        <div class="result-thumb">${thumb}</div>
+        <div class="result-info">
+          <div class="result-title">${escHtml(r.title)}</div>
+          <div class="result-channel">${escHtml(r.channel || '—')}</div>
+          <div class="result-duration">${dur}</div>
+        </div>
+        <div class="result-actions">
+          ${alreadyDone && r.song_id 
+            ? `<button class="result-play-btn" data-song-id="${r.song_id}" title="Play Now">
+                 <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+               </button>`
+            : ''
+          }
+          <button class="btn-download ${alreadyDone ? 'done' : ''}"
+            data-url="${escHtml(r.url || '')}"
+            data-title="${escHtml(r.title)}"
+            data-artist="${escHtml(r.channel || '')}"
+            data-thumb="${escHtml(thumbSrc)}"
+            data-duration="${r.duration || 0}"
+            title="${alreadyDone ? 'Downloaded' : 'Download'}">
+            ${alreadyDone
+              ? `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`
+              : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`}
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('.result-play-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      playFromSearch(parseInt(btn.dataset.songId));
+    });
+  });
+
+  const dlAllBtn = $('btn-dl-all-radio');
+  if (dlAllBtn) {
+    dlAllBtn.addEventListener('click', () => downloadAll(songs, dlAllBtn));
+  }
+  
+  const playAllBtn = $('btn-play-all-radio');
+  if (playAllBtn) {
+    playAllBtn.addEventListener('click', () => playAllDownloaded(songs));
+  }
+
+  container.querySelectorAll('.btn-download:not(.done)').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (btn.classList.contains('downloading') || btn.classList.contains('done')) return;
+      await startDownload(btn);
+    });
+  });
+}
+
 
 function renderYourMusicRow() {
   const container = $('rec-your-music');
@@ -514,7 +796,7 @@ function renderRecRow(containerId, results) {
     const thumb = thumbSrc
       ? `<img src="${escHtml(thumbSrc)}" alt="" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/${videoId}/mqdefault.jpg'" />`
       : `<span class="rec-art-fallback">\u266a</span>`;
-    const alreadyDone = downloadedUrls.has(r.url);
+    const alreadyDone = r.is_downloaded || downloadedUrls.has(r.url);
     return `
       <div class="rec-card">
         <div class="rec-card-art">
@@ -554,7 +836,11 @@ $('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSe
 
 async function doSearch() {
   const q = $('search-input').value.trim();
-  if (!q) return;
+  if (!q) {
+    showBrowseView();
+    return;
+  }
+  $('search-browse').classList.add('hidden');
   $('search-results').innerHTML = '<div class="empty-state"><div class="empty-icon" style="animation:pulse 1s infinite">⏳</div><p>Searching…</p></div>';
   $('search-empty').classList.add('hidden');
   try {
@@ -566,6 +852,37 @@ async function doSearch() {
   }
 }
 
+function showBrowseView() {
+  if ($('search-input').value.trim()) return;
+  $('search-results').innerHTML = '';
+  $('search-browse').classList.remove('hidden');
+  $('search-empty').classList.add('hidden');
+
+  const genres = [
+    { label: 'For You', color: '#1e3a8a', query: 'recommended for you mix' },
+    { label: 'Chill', color: '#14532d', query: 'chill lofi beats' },
+    { label: 'Pop', color: '#701a75', query: 'top pop hits 2024' },
+    { label: 'Hip-Hop', color: '#7c2d12', query: 'hip hop rap mix' },
+    { label: 'R&B', color: '#4c1d95', query: 'modern r&b soul' },
+    { label: 'Focus', color: '#064e3b', query: 'deep focus study music' },
+    { label: 'Workout', color: '#831843', query: 'energetic workout mix' },
+    { label: 'Sleep', color: '#172554', query: 'calm sleep ambient' },
+  ];
+
+  $('browse-grid').innerHTML = genres.map(g => `
+    <div class="browse-tile" style="background-color:${g.color}" data-query="${escHtml(g.query)}">
+      <div class="browse-tile-label">${escHtml(g.label)}</div>
+    </div>
+  `).join('');
+
+  $('browse-grid').querySelectorAll('.browse-tile').forEach(tile => {
+    tile.addEventListener('click', () => {
+      $('search-input').value = tile.dataset.query;
+      doSearch();
+    });
+  });
+}
+
 const downloadedUrls = new Set();
 
 function renderSearchResults(results) {
@@ -574,12 +891,13 @@ function renderSearchResults(results) {
     container.innerHTML = '<div class="empty-state"><p>No results found</p></div>';
     return;
   }
-  container.innerHTML = results.map(r => {
+  container.innerHTML = results.map((r, i) => {
     const dur = formatDuration(r.duration);
     const thumb = r.thumbnail ? `<img src="${escHtml(r.thumbnail)}" alt="" onerror="this.style.display='none'" />` : '♫';
-    const alreadyDone = downloadedUrls.has(r.url);
+    const alreadyDone = r.is_downloaded || downloadedUrls.has(r.url);
+    const delay = Math.min(i * 35, 500);
     return `
-      <div class="result-item" data-url="${escHtml(r.url)}">
+      <div class="result-item fade-in-item" data-url="${escHtml(r.url)}" style="animation-delay:${delay}ms">
         <div class="result-thumb">${thumb}</div>
         <div class="result-info">
           <div class="result-title">${escHtml(r.title)}</div>
@@ -587,7 +905,13 @@ function renderSearchResults(results) {
           <div class="result-duration">${dur}</div>
         </div>
         <div class="result-actions">
-          <button class="btn-download ${alreadyDone ? 'done' : ''}" data-url="${escHtml(r.url)}" data-title="${escHtml(r.title)}" data-artist="${escHtml(r.channel || '')}" data-thumb="${escHtml(r.thumbnail || '')}" data-duration="${r.duration || 0}" title="Download">
+          ${alreadyDone && r.song_id 
+            ? `<button class="result-play-btn" data-song-id="${r.song_id}" title="Play Now">
+                 <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+               </button>`
+            : ''
+          }
+          <button class="btn-download ${alreadyDone ? 'done' : ''}" data-url="${escHtml(r.url)}" data-title="${escHtml(r.title)}" data-artist="${escHtml(r.channel || '')}" data-thumb="${escHtml(r.thumbnail || '')}" data-duration="${r.duration || 0}" title="${alreadyDone ? 'Downloaded' : 'Download'}">
             ${alreadyDone
               ? `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`
               : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`
@@ -596,6 +920,13 @@ function renderSearchResults(results) {
         </div>
       </div>`;
   }).join('');
+
+  container.querySelectorAll('.result-play-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      playFromSearch(parseInt(btn.dataset.songId));
+    });
+  });
 
   container.querySelectorAll('.btn-download').forEach(btn => {
     btn.addEventListener('click', async e => {
@@ -625,6 +956,68 @@ async function startDownload(btn) {
   }
 }
 
+async function downloadAll(songs, btn) {
+  if (btn.classList.contains('loading')) return;
+  btn.classList.add('loading');
+  btn.textContent = 'Processing…';
+  
+  let count = 0;
+  for (const s of songs) {
+    if (s.is_downloaded || downloadedUrls.has(s.url)) continue;
+    
+    // Simulate a click on the download button for this song if visible
+    const rowBtn = document.querySelector(`.btn-download[data-url="${s.url}"]`);
+    if (rowBtn) {
+      await startDownload(rowBtn);
+      count++;
+      // Small delay between starts to avoid overwhelming the server
+      await new Promise(r => setTimeout(r, 800));
+    }
+  }
+  
+  btn.textContent = count > 0 ? `Started ${count} downloads` : 'All up to date';
+  setTimeout(() => {
+    btn.classList.remove('loading');
+    btn.textContent = 'Download All';
+  }, 3000);
+}
+
+function playAllDownloaded(songs) {
+  const downloaded = songs.filter(s => s.is_downloaded && s.song_id);
+  if (!downloaded.length) {
+    toast('No songs downloaded yet — download some first!');
+    return;
+  }
+  
+  // Transform radio results into library song objects for the queue
+  // We need to make sure we have the full song objects from the library state
+  const librarySongs = downloaded.map(ds => {
+    return state.songs.find(ls => ls.id === ds.song_id) || ds;
+  });
+  
+  state.queue = librarySongs;
+  state.queueIndex = 0;
+  state.activeSong = state.queue[0];
+  playCurrent();
+  showView('nowplaying');
+  toast(`Playing ${downloaded.length} songs from radio`);
+}
+
+function playFromSearch(songId) {
+  // Find the song in state.songs (library)
+  const idx = state.songs.findIndex(s => s.id === songId);
+  if (idx >= 0) {
+    playFromLibrary(idx);
+    showView('nowplaying');
+  } else {
+    // If not found in current state.songs (maybe library hasn't refreshed), 
+    // we could fetch it, but playCurrent will handle it if we set activeSong.
+    state.activeSong = { id: songId }; 
+    playCurrent();
+    showView('nowplaying');
+  }
+}
+
 function pollDownloadStatus(songId, btn, url) {
   const interval = setInterval(async () => {
     try {
@@ -637,7 +1030,14 @@ function pollDownloadStatus(songId, btn, url) {
         btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`;
         downloadedUrls.add(url);
         toast('Download complete!');
-        // Don't auto-reset library — just keep current context
+        // Refresh library in background to get the new song_id
+        await loadLibrary();
+        // Re-render current results if still on search/radio
+        if (state.currentView === 'search') {
+           // Small hack: if we are in radio/search, the items now have songIds
+           // but we don't want to wipe the whole UI. 
+           // In a real app we'd update just that row.
+        }
       } else if (data.status.startsWith('error')) {
         clearInterval(interval);
         btn.classList.remove('downloading');

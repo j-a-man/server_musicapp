@@ -9,29 +9,30 @@ def search_youtube(query: str, limit: int = 12):
         'extract_flat': True,
         'no_warnings': True,
     }
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        results = ydl.extract_info(f"ytsearch{limit}:{query}", download=False)
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            results = ydl.extract_info(f"ytsearch{limit}:{query}", download=False)
 
-    entries = []
-    for entry in results.get('entries', []) or []:
-        if not entry:
-            continue
-        
-        # FIX 1: Corrected the URL string formatting so yt-dlp gets a real link
-        video_id = entry.get('id', '')
-        thumbnail = entry.get('thumbnail') or (
-            f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg" if video_id else ''
-        )
-        entries.append({
-            'id': video_id,
-            'title': entry.get('title', 'Unknown'),
-            'channel': entry.get('channel') or entry.get('uploader', 'Unknown'),
-            'duration': entry.get('duration') or 0,
-            'thumbnail': thumbnail,
-            'url': f"https://www.youtube.com/watch?v={video_id}",
-            'view_count': entry.get('view_count', 0),
-        })
-    return entries
+        entries = []
+        for entry in results.get('entries', []) or []:
+            if not entry:
+                continue
+            
+            # FIX 1: Corrected the URL string formatting so yt-dlp gets a real link
+            video_id = entry.get('id', '')
+            entries.append({
+                'id': video_id,
+                'title': entry.get('title', 'Unknown'),
+                'channel': entry.get('channel') or entry.get('uploader', 'Unknown'),
+                'duration': entry.get('duration') or 0,
+                'thumbnail': entry.get('thumbnail', ''),
+                'url': f"https://www.youtube.com/watch?v={video_id}",
+                'view_count': entry.get('view_count', 0),
+            })
+        return entries
+    except Exception as e:
+        print(f"YouTube Search Error for '{query}': {e}")
+        return []
 
 
 def download_audio(youtube_url: str, song_id: int) -> dict:

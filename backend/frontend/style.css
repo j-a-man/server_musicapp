@@ -43,8 +43,9 @@ img { display: block; }
   padding: 0 0 16px;
   opacity: 0;
   pointer-events: none;
-  transform: translateY(8px);
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  transform: translateY(16px);
+  transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .view.active {
   opacity: 1;
@@ -323,17 +324,20 @@ img { display: block; }
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  padding: 0 4px;
   margin-top: calc(52px + env(safe-area-inset-top, 0px));
+  box-sizing: border-box;
 }
 .back-btn, .queue-btn {
-  width: 40px; height: 40px;
+  width: 44px; height: 44px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   color: var(--text-sub);
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
+  z-index: 100;
 }
-.back-btn:hover, .queue-btn:hover { background: var(--card); }
-.back-btn svg, .queue-btn svg { width: 24px; height: 24px; }
+.back-btn:hover, .queue-btn:hover { background: var(--card); color: var(--text); }
+.back-btn svg, .queue-btn svg { width: 26px; height: 26px; }
 
 .np-artwork-wrap {
   position: relative;
@@ -383,6 +387,7 @@ img { display: block; }
   margin-bottom: 12px;
 }
 .progress-bar {
+  appearance: none;
   -webkit-appearance: none;
   width: 100%;
   height: 4px;
@@ -583,6 +588,7 @@ img { display: block; }
 .playlist-del-btn svg { width: 16px; height: 16px; }
 
 /* ── Queue Panel ── */
+
 .queue-scroll-area {
   padding: 0 12px 20px;
 }
@@ -595,6 +601,43 @@ img { display: block; }
   text-transform: uppercase;
   letter-spacing: 1px;
 }
+
+.queue-drag-handle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: grab;
+  margin-right: 8px;
+  opacity: 0.3;
+  transition: opacity 0.2s, color 0.2s;
+}
+.queue-item:hover .queue-drag-handle {
+  opacity: 1;
+  color: var(--text-sub);
+}
+.queue-drag-handle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sortable-ghost {
+  opacity: 0.2;
+  background: var(--card) !important;
+}
+.sortable-chosen {
+  background: var(--card-hover);
+}
+.sortable-drag {
+  opacity: 1 !important;
+  background: var(--card-hover) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transform: scale(1.02);
+  cursor: grabbing;
+}
+
 .queue-item {
   display: flex;
   align-items: center;
@@ -868,6 +911,7 @@ img { display: block; }
   color: var(--text);
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.3;
@@ -885,4 +929,331 @@ img { display: block; }
   color: var(--text-muted);
   font-size: 13px;
   padding: 20px 0;
+}
+
+/* ── Artist Radio Cards ── */
+.radio-card {
+  flex-shrink: 0;
+  width: 120px;
+  cursor: pointer;
+}
+.radio-card-art {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.radio-card:hover .radio-card-art {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  transform: scale(1.04);
+}
+.radio-card-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.radio-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  border-radius: 50%;
+}
+.radio-card:hover .radio-card-overlay {
+  background: rgba(0,0,0,0.45);
+}
+.radio-play-icon {
+  width: 44px;
+  height: 44px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.radio-play-icon svg { width: 20px; height: 20px; color: #fff; margin-left: 2px; }
+.radio-card:hover .radio-play-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+.radio-card-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.radio-card-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 2px;
+}
+.discovery-row-radio {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+.discovery-row-radio:hover { opacity: 0.7; }
+
+/* ── Radio Header Banner ── */
+.radio-header-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, var(--card) 0%, rgba(var(--accent-rgb, 139,92,246),0.15) 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 0 0 20px;
+}
+.radio-banner-icon {
+  font-size: 36px;
+  flex-shrink: 0;
+}
+.radio-banner-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+}
+.radio-banner-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.queue-all-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+.queue-all-btn:hover { opacity: 0.85; transform: scale(1.03); }
+
+/* ────────────────────────────────────────────────────────────────
+Global Animations
+──────────────────────────────────────────────────────────────── */
+
+/* Staggered fade-in for list items */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-item {
+  opacity: 0;
+  animation: fadeInUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Song list rows */
+.song-item {
+  transition: background 0.15s, transform 0.15s;
+}
+.song-item:hover { transform: translateX(2px); }
+.song-item:active { transform: scale(0.98); background: var(--card-hover); }
+
+/* Result items */
+.result-item {
+  transition: background 0.15s, transform 0.15s;
+}
+.result-item:hover { transform: translateX(3px); }
+.result-item:active { transform: scale(0.98); }
+
+/* Queue items drag lift */
+.queue-item {
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.queue-item:hover { background: var(--card-hover); transform: translateX(2px); }
+
+/* Mini player — slide up from bottom */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.mini-player:not(.hidden) {
+  animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Side panels — spring slide from right */
+.side-panel {
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.3s ease;
+}
+.side-panel.hidden { opacity: 0; }
+.side-panel:not(.hidden) { opacity: 1; }
+
+/* Now Playing view slide up */
+#view-nowplaying {
+  transform: translateY(100%);
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.3s ease;
+  opacity: 0;
+}
+#view-nowplaying.active {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Artwork subtle spin ring */
+.np-disc-ring {
+  transition: opacity 0.4s;
+}
+
+/* Play/pause button bounce */
+.play-btn, .mini-play-btn {
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.play-btn:active, .mini-play-btn:active {
+  transform: scale(0.88);
+}
+
+/* Control buttons */
+.ctrl-btn {
+  transition: color 0.15s, transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s;
+}
+.ctrl-btn:active { transform: scale(0.84); }
+
+/* Nav buttons */
+.nav-btn {
+  transition: color 0.2s, transform 0.15s;
+}
+.nav-btn.active { animation: navPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes navPop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+/* Download button done checkmark pop */
+@keyframes donePop {
+  0%   { transform: scale(0.7); }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.btn-download.done, .rec-dl-btn.done {
+  animation: donePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Rec cards */
+.rec-card {
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s;
+}
+.rec-card:hover {
+  transform: scale(1.03) translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+/* Toast notification */
+.toast {
+  animation: toastIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes toastIn {
+  from { transform: translateX(-50%) translateY(12px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ── Search Browse View ─────────────────────────── */
+.search-browse { padding: 0 16px 100px; }
+.browse-title { font-size: 20px; font-weight: 700; margin: 24px 0 16px; color: var(--text); font-family: 'Syne', sans-serif; }
+.browse-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.browse-tile {
+  position: relative;
+  height: 100px;
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 12px;
+  cursor: pointer;
+  transition: transform 0.2s, filter 0.2s;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--surface);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.browse-tile:active { transform: scale(0.95); }
+.browse-tile:hover { filter: brightness(1.1); }
+.browse-tile-label { font-size: 15px; font-weight: 700; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); font-family: 'Syne', sans-serif; }
+
+/* ── Result Actions ────────────────────────────── */
+.result-actions { display: flex; align-items: center; gap: 10px; }
+.result-play-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #000;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.result-play-btn:active { transform: scale(0.9); }
+.result-play-btn svg { width: 20px; height: 20px; margin-left: 2px; }
+
+/* ── Radio Banner Actions ───────────────────────── */
+.radio-header-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%);
+  margin-bottom: 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.radio-banner-left { display: flex; align-items: center; gap: 16px; }
+.radio-banner-actions { display: flex; align-items: center; gap: 8px; }
+
+.btn-download-all, .btn-play-all-radio {
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.2s, background 0.2s;
+  font-family: 'Karla', sans-serif;
+}
+
+.btn-play-all-radio {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.btn-play-all-radio:hover { background: rgba(255,255,255,0.2); }
+.btn-download-all:hover { background: #fff; }
+.btn-download-all:active, .btn-play-all-radio:active { transform: scale(0.95); }
+.btn-download-all.disabled { opacity: 0.5; pointer-events: none; }
+.btn-download-all.loading { pointer-events: none; }
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.98); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
 }

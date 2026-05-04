@@ -46,11 +46,32 @@
       <!-- For You -->
       <div class="rec-section" id="section-for-you">
         <div class="rec-section-header">
-          <div class="rec-section-title">For You Sir</div>
+          <div class="rec-section-title">For You</div>
           <div class="rec-section-sub" id="for-you-label">Based on your taste</div>
         </div>
         <div class="rec-scroll" id="rec-for-you"></div>
       </div>
+
+      <!-- Suggested Playlists -->
+      <div class="rec-section hidden" id="section-playlists">
+        <div class="rec-section-header">
+          <div class="rec-section-title">Suggested Playlists</div>
+          <div class="rec-section-sub">Hand-picked for you</div>
+        </div>
+        <div class="rec-scroll" id="rec-playlists"></div>
+      </div>
+
+      <!-- Artist Radio -->
+      <div class="rec-section hidden" id="section-artist-radio">
+        <div class="rec-section-header">
+          <div class="rec-section-title">Artist Radio</div>
+          <div class="rec-section-sub">Stations based on your library</div>
+        </div>
+        <div class="rec-scroll" id="rec-artist-radio"></div>
+      </div>
+
+      <!-- Dynamic Discovery Rows (injected by JS per artist) -->
+      <div id="section-discovery-rows"></div>
 
       <!-- Trending -->
       <div class="rec-section" id="section-trending">
@@ -108,7 +129,13 @@
         </button>
       </div>
       <div id="search-results" class="search-results"></div>
-      <div id="search-empty" class="empty-state">
+      <div id="search-browse" class="search-browse">
+        <div class="browse-title">Browse all</div>
+        <div class="browse-grid" id="browse-grid">
+          <!-- Genre tiles -->
+        </div>
+      </div>
+      <div id="search-empty" class="empty-state hidden">
         <div class="empty-icon">🔍</div>
         <p>Search YouTube for any song</p>
       </div>
@@ -285,6 +312,7 @@
     </button>
   </nav>
 
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <script src="/static/app.js?v=4"></script>
 </body>
 
