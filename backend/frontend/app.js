@@ -32,7 +32,7 @@ const views = {
 // ── Greeting ─────────────────────────────────────────────────────────────────
 function setGreeting() {
   const h = new Date().getHours();
-  const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  const g = h < 12 ? 'Good morning, Jaylin' : h < 18 ? 'Good afternoon, Jaylin' : 'Good evening, Jaylin';
   $('home-greeting').textContent = g;
 }
 
@@ -92,13 +92,13 @@ async function loadLibrary() {
     const res = await fetch('/api/library');
     const data = await res.json();
     state.songs = data.songs || [];
-    
+
     // Sync downloadedUrls set
     downloadedUrls.clear();
     state.songs.forEach(s => {
       if (s.youtube_url) downloadedUrls.add(s.youtube_url);
     });
-    
+
     renderLibrary();
   } catch (e) {
     console.error('Failed to load library', e);
@@ -376,11 +376,11 @@ function renderQueue() {
       }
     }
     if (upcoming.length) {
-       html += `<div id="context-queue-items">`;
-       html += upcoming.map((s, i) => queueItemHTML(s, i, false, false)).join('');
-       html += `</div>`;
+      html += `<div id="context-queue-items">`;
+      html += upcoming.map((s, i) => queueItemHTML(s, i, false, false)).join('');
+      html += `</div>`;
     } else {
-       html += '<div style="padding:10px 16px;color:var(--text-muted);font-size:13px">End of queue</div>';
+      html += '<div style="padding:10px 16px;color:var(--text-muted);font-size:13px">End of queue</div>';
     }
   }
 
@@ -398,7 +398,7 @@ function renderQueue() {
       onEnd: (evt) => {
         const item = state.userQueue.splice(evt.oldIndex, 1)[0];
         state.userQueue.splice(evt.newIndex, 0, item);
-        renderQueue(); 
+        renderQueue();
       }
     });
   }
@@ -412,18 +412,18 @@ function renderQueue() {
       onEnd: (evt) => {
         const item = upcoming.splice(evt.oldIndex, 1)[0];
         upcoming.splice(evt.newIndex, 0, item);
-        
+
         if (!state.isShuffled) {
           let nextIdx = (state.queueIndex + 1) % state.queue.length;
           let newFullQueue = [...state.queue];
-          for(let i=0; i<upcoming.length; i++) {
-             let targetIdx = (nextIdx + i) % state.queue.length;
-             newFullQueue[targetIdx] = upcoming[i];
+          for (let i = 0; i < upcoming.length; i++) {
+            let targetIdx = (nextIdx + i) % state.queue.length;
+            newFullQueue[targetIdx] = upcoming[i];
           }
           state.queue = newFullQueue;
         } else {
-           state.queue = [state.activeSong, ...upcoming];
-           state.queueIndex = 0;
+          state.queue = [state.activeSong, ...upcoming];
+          state.queueIndex = 0;
         }
         renderQueue();
       }
@@ -444,11 +444,11 @@ function queueItemHTML(song, idx, isPlaying = false, isUserQueue = false) {
   const thumb = song.thumbnail
     ? `<img src="${escHtml(song.thumbnail)}" alt="" onerror="this.style.display='none'" />`
     : '♪';
-  const removeBtn = isUserQueue 
-    ? `<div class="queue-del-btn" data-idx="${idx}" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>` 
+  const removeBtn = isUserQueue
+    ? `<div class="queue-del-btn" data-idx="${idx}" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>`
     : '';
   const dragHandle = `<div class="queue-drag-handle"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg></div>`;
-  
+
   return `
     <div class="queue-item ${isPlaying ? 'playing' : ''}">
       ${!isPlaying ? dragHandle : '<div style="width:24px"></div>'}
@@ -697,12 +697,12 @@ function showRadioModal(artist, songs) {
           <div class="result-duration">${dur}</div>
         </div>
         <div class="result-actions">
-          ${alreadyDone && r.song_id 
-            ? `<button class="result-play-btn" data-song-id="${r.song_id}" title="Play Now">
+          ${alreadyDone && r.song_id
+        ? `<button class="result-play-btn" data-song-id="${r.song_id}" title="Play Now">
                  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                </button>`
-            : ''
-          }
+        : ''
+      }
           <button class="btn-download ${alreadyDone ? 'done' : ''}"
             data-url="${escHtml(r.url || '')}"
             data-title="${escHtml(r.title)}"
@@ -711,8 +711,8 @@ function showRadioModal(artist, songs) {
             data-duration="${r.duration || 0}"
             title="${alreadyDone ? 'Downloaded' : 'Download'}">
             ${alreadyDone
-              ? `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`
-              : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`}
+        ? `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`}
           </button>
         </div>
       </div>`;
@@ -723,7 +723,8 @@ function showRadioModal(artist, songs) {
   container.querySelectorAll('.result-play-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      playFromSearch(parseInt(btn.dataset.songId));
+      const resultItem = btn.closest('.result-item');
+      playFromSearch(parseInt(btn.dataset.songId), resultItem ? resultItem.dataset.url : null);
     });
   });
 
@@ -731,7 +732,7 @@ function showRadioModal(artist, songs) {
   if (dlAllBtn) {
     dlAllBtn.addEventListener('click', () => downloadAll(songs, dlAllBtn));
   }
-  
+
   const playAllBtn = $('btn-play-all-radio');
   if (playAllBtn) {
     playAllBtn.addEventListener('click', () => playAllDownloaded(songs));
@@ -798,7 +799,7 @@ function renderRecRow(containerId, results) {
       : `<span class="rec-art-fallback">\u266a</span>`;
     const alreadyDone = r.is_downloaded || downloadedUrls.has(r.url);
     return `
-      <div class="rec-card">
+      <div class="rec-card" ${alreadyDone ? 'style="cursor:pointer"' : ''} data-song-id="${r.song_id || ''}" data-url="${escHtml(r.url || '')}">
         <div class="rec-card-art">
           ${thumb || '<span class="rec-art-fallback">♪</span>'}
           <button class="rec-dl-btn ${alreadyDone ? 'done' : ''}"
@@ -809,9 +810,9 @@ function renderRecRow(containerId, results) {
             data-duration="${r.duration || 0}"
             title="Download">
             ${alreadyDone
-              ? `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`
-              : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`
-            }
+        ? `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`
+      }
           </button>
         </div>
         <div class="rec-card-info">
@@ -826,6 +827,16 @@ function renderRecRow(containerId, results) {
       e.stopPropagation();
       if (btn.classList.contains('downloading') || btn.classList.contains('done')) return;
       await startDownload(btn);
+    });
+  });
+
+  // Make downloaded cards clickable to play radio
+  container.querySelectorAll('.rec-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const btn = card.querySelector('.rec-dl-btn');
+      if (btn && btn.classList.contains('done')) {
+        playFromSearch(parseInt(card.dataset.songId), card.dataset.url);
+      }
     });
   });
 }
@@ -897,7 +908,7 @@ function renderSearchResults(results) {
     const alreadyDone = r.is_downloaded || downloadedUrls.has(r.url);
     const delay = Math.min(i * 35, 500);
     return `
-      <div class="result-item fade-in-item" data-url="${escHtml(r.url)}" style="animation-delay:${delay}ms">
+      <div class="result-item fade-in-item" ${alreadyDone ? 'style="cursor:pointer; animation-delay:' + delay + 'ms"' : 'style="animation-delay:' + delay + 'ms"'} data-url="${escHtml(r.url)}">
         <div class="result-thumb">${thumb}</div>
         <div class="result-info">
           <div class="result-title">${escHtml(r.title)}</div>
@@ -905,17 +916,17 @@ function renderSearchResults(results) {
           <div class="result-duration">${dur}</div>
         </div>
         <div class="result-actions">
-          ${alreadyDone && r.song_id 
-            ? `<button class="result-play-btn" data-song-id="${r.song_id}" title="Play Now">
+          ${alreadyDone && r.song_id
+        ? `<button class="result-play-btn" data-song-id="${r.song_id}" title="Play Now">
                  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                </button>`
-            : ''
-          }
+        : ''
+      }
           <button class="btn-download ${alreadyDone ? 'done' : ''}" data-url="${escHtml(r.url)}" data-title="${escHtml(r.title)}" data-artist="${escHtml(r.channel || '')}" data-thumb="${escHtml(r.thumbnail || '')}" data-duration="${r.duration || 0}" title="${alreadyDone ? 'Downloaded' : 'Download'}">
             ${alreadyDone
-              ? `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`
-              : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`
-            }
+        ? `<svg viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`
+      }
           </button>
         </div>
       </div>`;
@@ -924,7 +935,8 @@ function renderSearchResults(results) {
   container.querySelectorAll('.result-play-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      playFromSearch(parseInt(btn.dataset.songId));
+      const resultItem = btn.closest('.result-item');
+      playFromSearch(parseInt(btn.dataset.songId), resultItem ? resultItem.dataset.url : null);
     });
   });
 
@@ -933,6 +945,18 @@ function renderSearchResults(results) {
       e.stopPropagation();
       if (btn.classList.contains('downloading') || btn.classList.contains('done')) return;
       await startDownload(btn);
+    });
+  });
+
+  // Make downloaded result items clickable to play radio
+  container.querySelectorAll('.result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const btn = item.querySelector('.btn-download');
+      if (btn && btn.classList.contains('done')) {
+        const songIdBtn = item.querySelector('.result-play-btn');
+        const songId = songIdBtn ? parseInt(songIdBtn.dataset.songId) : null;
+        playFromSearch(songId, item.dataset.url);
+      }
     });
   });
 }
@@ -960,11 +984,11 @@ async function downloadAll(songs, btn) {
   if (btn.classList.contains('loading')) return;
   btn.classList.add('loading');
   btn.textContent = 'Processing…';
-  
+
   let count = 0;
   for (const s of songs) {
     if (s.is_downloaded || downloadedUrls.has(s.url)) continue;
-    
+
     // Simulate a click on the download button for this song if visible
     const rowBtn = document.querySelector(`.btn-download[data-url="${s.url}"]`);
     if (rowBtn) {
@@ -974,7 +998,7 @@ async function downloadAll(songs, btn) {
       await new Promise(r => setTimeout(r, 800));
     }
   }
-  
+
   btn.textContent = count > 0 ? `Started ${count} downloads` : 'All up to date';
   setTimeout(() => {
     btn.classList.remove('loading');
@@ -983,38 +1007,56 @@ async function downloadAll(songs, btn) {
 }
 
 function playAllDownloaded(songs) {
-  const downloaded = songs.filter(s => s.is_downloaded && s.song_id);
-  if (!downloaded.length) {
+  // Find all songs from the radio list that exist in our local library
+  const librarySongs = songs.map(s => {
+    return state.songs.find(libSong => libSong.youtube_url === s.url || libSong.id === s.song_id);
+  }).filter(Boolean); // removes any that aren't downloaded yet
+
+  if (!librarySongs.length) {
     toast('No songs downloaded yet — download some first!');
     return;
   }
-  
-  // Transform radio results into library song objects for the queue
-  // We need to make sure we have the full song objects from the library state
-  const librarySongs = downloaded.map(ds => {
-    return state.songs.find(ls => ls.id === ds.song_id) || ds;
-  });
-  
+
   state.queue = librarySongs;
   state.queueIndex = 0;
   state.activeSong = state.queue[0];
   playCurrent();
   showView('nowplaying');
-  toast(`Playing ${downloaded.length} songs from radio`);
+  toast(`Playing ${librarySongs.length} downloaded songs from radio`);
 }
 
-function playFromSearch(songId) {
+function playFromSearch(songId, songUrl = null) {
   // Find the song in state.songs (library)
-  const idx = state.songs.findIndex(s => s.id === songId);
-  if (idx >= 0) {
-    playFromLibrary(idx);
-    showView('nowplaying');
-  } else {
-    // If not found in current state.songs (maybe library hasn't refreshed), 
-    // we could fetch it, but playCurrent will handle it if we set activeSong.
-    state.activeSong = { id: songId }; 
+  let targetSong = null;
+  if (songId && !isNaN(songId)) {
+    targetSong = state.songs.find(s => s.id === songId);
+  }
+  if (!targetSong && songUrl) {
+    targetSong = state.songs.find(s => s.youtube_url === songUrl);
+  }
+
+  if (targetSong) {
+    // 1. Same artist songs
+    let sameArtist = state.songs.filter(s => s.id !== targetSong.id && s.artist === targetSong.artist);
+    sameArtist = sameArtist.sort(() => Math.random() - 0.5);
+
+    // 2. Random other songs
+    let otherSongs = state.songs.filter(s => s.id !== targetSong.id && s.artist !== targetSong.artist);
+    otherSongs = otherSongs.sort(() => Math.random() - 0.5);
+
+    // Construct queue: target song + up to 10 same artist + up to 15 random others
+    let radioQueue = [targetSong];
+    radioQueue = radioQueue.concat(sameArtist.slice(0, 10));
+    radioQueue = radioQueue.concat(otherSongs.slice(0, 15));
+
+    state.queue = radioQueue;
+    state.queueIndex = 0;
+    state.activeSong = state.queue[0];
     playCurrent();
     showView('nowplaying');
+    toast(`Playing similar songs to ${targetSong.title}`);
+  } else {
+    toast("Please wait for the song to finish downloading.");
   }
 }
 
@@ -1034,9 +1076,9 @@ function pollDownloadStatus(songId, btn, url) {
         await loadLibrary();
         // Re-render current results if still on search/radio
         if (state.currentView === 'search') {
-           // Small hack: if we are in radio/search, the items now have songIds
-           // but we don't want to wipe the whole UI. 
-           // In a real app we'd update just that row.
+          // Small hack: if we are in radio/search, the items now have songIds
+          // but we don't want to wipe the whole UI. 
+          // In a real app we'd update just that row.
         }
       } else if (data.status.startsWith('error')) {
         clearInterval(interval);
@@ -1110,8 +1152,8 @@ function prevSong() {
   // If we are playing from userQueue, going back just restarts the song for simplicity.
   // To be fully accurate, we'd need a history stack.
   if (state.activeSong && !state.queue.some(s => s.id === state.activeSong.id && state.queue.indexOf(s) === state.queueIndex)) {
-    audio.currentTime = 0; 
-    return; 
+    audio.currentTime = 0;
+    return;
   }
   if (!state.queue.length) return;
   state.queueIndex = (state.queueIndex - 1 + state.queue.length) % state.queue.length;
@@ -1235,7 +1277,7 @@ function formatDuration(secs) {
 }
 
 function escHtml(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function toast(msg) {
