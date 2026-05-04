@@ -851,6 +851,18 @@ async function doSearch() {
     showBrowseView();
     return;
   }
+  
+  // Intercept artist radio searches (e.g. "Drake radio")
+  const lowerQ = q.toLowerCase();
+  if (lowerQ.endsWith(' radio') && lowerQ.length > 6) {
+    const artist = q.slice(0, -6).trim();
+    $('search-browse').classList.add('hidden');
+    $('search-results').innerHTML = '<div class="empty-state"><div class="empty-icon" style="animation:pulse 1s infinite">⏳</div><p>Tuning in to ' + escHtml(artist) + ' Radio…</p></div>';
+    $('search-empty').classList.add('hidden');
+    await startArtistRadio(artist);
+    return;
+  }
+  
   $('search-browse').classList.add('hidden');
   $('search-results').innerHTML = '<div class="empty-state"><div class="empty-icon" style="animation:pulse 1s infinite">⏳</div><p>Searching…</p></div>';
   $('search-empty').classList.add('hidden');
